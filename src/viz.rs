@@ -147,6 +147,11 @@ fn draw_performance(libraries: &[String], durations: &HashMap<String, Vec<u64>>)
         }
     }
 
+    // Ensure non-zero range
+    if max_dur == 0 {
+        max_dur = 100;
+    }
+
     let mut chart = ChartBuilder::on(&root)
         .caption(
             "Performance (Median Duration - Correct Decodes)",
@@ -156,39 +161,41 @@ fn draw_performance(libraries: &[String], durations: &HashMap<String, Vec<u64>>)
         .x_label_area_size(40)
         .y_label_area_size(60)
         .build_cartesian_2d(
-            (0..libraries.len()).into_segmented(),
-            0u64..(max_dur as u64 + 1000),
+            0.0..libraries.len() as f64,
+            0u64..(max_dur as u64 + (max_dur / 10).max(10)),
         )?;
 
     chart
         .configure_mesh()
         .x_labels(libraries.len())
-        .x_label_formatter(&|i| {
-            // i is &SegmentValue<usize>
-            match i {
-                SegmentValue::Exact(val) | SegmentValue::CenterOf(val) => {
-                    if *val < libraries.len() {
-                        libraries[*val].clone()
-                    } else {
-                        "".to_string()
-                    }
-                }
-                _ => "".to_string(),
+        .x_label_formatter(&|x| {
+            let idx = x.floor() as usize;
+            if idx < libraries.len() {
+                libraries[idx].clone()
+            } else {
+                "".to_string()
             }
         })
         .y_desc("Microseconds")
         .draw()?;
 
+    let bar_width = 0.6;
+
     for (idx, (_lib, median, _p95)) in perf_stats.iter().enumerate() {
         let color = Palette99::pick(idx);
-        // Draw Bar for Median
-        chart.draw_series(std::iter::once(Rectangle::new(
-            [
-                (SegmentValue::CenterOf(idx), 0),
-                (SegmentValue::CenterOf(idx), *median),
-            ],
-            color.filled(),
-        )))?;
+        let center = idx as f64 + 0.5;
+        let x0 = center - bar_width / 2.0;
+        let x1 = center + bar_width / 2.0;
+        
+        if *median > 0 {
+            chart.draw_series(std::iter::once(Rectangle::new(
+                [
+                    (x0, 0),
+                    (x1, *median),
+                ],
+                color.filled(),
+            )))?;
+        }
     }
 
     Ok(())

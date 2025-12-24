@@ -1,12 +1,8 @@
-mod benchmark;
-mod data;
-mod decoders;
-mod viz;
-
 use anyhow::Result;
 use indicatif::ProgressBar;
 use std::fs::File;
 use std::io::BufWriter;
+use qr_benchmark::{benchmark, data, decoders};
 
 fn main() -> Result<()> {
     let output_csv = "raw_measurements.csv";
@@ -38,10 +34,8 @@ fn main() -> Result<()> {
     pb.finish_with_message("Benchmark complete");
     writer.flush()?;
 
-    // 5. Visualization
-    println!("Generating visualizations...");
-    viz::generate_plots(output_csv)?;
-    println!("Done! Check {} and generated PNGs.", output_csv);
+    println!("Benchmark finished. Data saved to {}.", output_csv);
+    println!("To generate visualizations, run: cargo run --bin analyze");
 
     Ok(())
 }

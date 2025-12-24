@@ -53,6 +53,10 @@ pub fn discover_test_data(
                             // We should probably normalize line endings too (\r\n vs \n).
                             let expected_text = expected_text.trim().replace("\r\n", "\n");
 
+                            if expected_text.starts_with("#") {
+                                continue;
+                            }
+
                             pairs.push(TestPair {
                                 image_path: path.to_path_buf(),
                                 category,
