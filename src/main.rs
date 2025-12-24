@@ -7,16 +7,14 @@ use anyhow::Result;
 use indicatif::ProgressBar;
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::Path;
 
 fn main() -> Result<()> {
     let output_csv = "raw_measurements.csv";
 
     // 1. Data Discovery
     println!("Discovering test data...");
-    // Limit to 5 per category for demonstration speed.
-    // In a real full run, set limit to None.
-    let pairs = data::discover_test_data(&["../decoding", "../detection"], Some(5))?;
+    // Limit to None for full run.
+    let pairs = data::discover_test_data(&["../decoding", "../detection"], None)?;
     println!("Found {} test pairs.", pairs.len());
 
     // 2. Setup Decoders
