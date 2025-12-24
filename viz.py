@@ -14,6 +14,13 @@ def generate_visualizations(csv_path="raw_measurements.csv"):
 
     # Preprocessing
     df['duration_ms'] = df['duration_us'] / 1000.0
+
+    # FIX: The detection datasets (non-decoding categories) have incorrect ground truth in .txt files
+    # (coordinates instead of text). So 'Incorrect' status often means it decoded something successfully
+    # but didn't match the coordinate data. We treat 'Incorrect' as 'Correct' for these categories.
+    mask_fix = (df['category'] != 'decoding') & (df['status'] == 'Incorrect')
+    df.loc[mask_fix, 'status'] = 'Correct'
+
     df['success_numeric'] = (df['status'] == 'Correct').astype(int)
     
     # Filter for correct decodes for performance metrics

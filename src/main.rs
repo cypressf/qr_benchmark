@@ -1,8 +1,8 @@
 use anyhow::Result;
 use indicatif::ProgressBar;
+use qr_benchmark::{benchmark, data, decoders};
 use std::fs::File;
 use std::io::BufWriter;
-use qr_benchmark::{benchmark, data, decoders};
 
 fn main() -> Result<()> {
     let output_csv = "raw_measurements.csv";
@@ -10,7 +10,7 @@ fn main() -> Result<()> {
     // 1. Data Discovery
     println!("Discovering test data...");
     // Limit to None for full run.
-    let pairs = data::discover_test_data(&["../decoding", "../detection"], None)?;
+    let pairs = data::discover_test_data(&["./qrcodes/decoding", "./qrcodes/detection"], None)?;
     println!("Found {} test pairs.", pairs.len());
 
     // 2. Setup Decoders
