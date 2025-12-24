@@ -48,7 +48,11 @@ pub fn discover_test_data(
                         if text_path.exists() {
                             let expected_text = std::fs::read_to_string(&text_path)?;
                             // Clean up expected text (trim whitespace)
-                            let expected_text = expected_text.trim().to_string();
+                            // IMPORTANT: Many text editors add a newline at end of file,
+                            // but QR decoders might output raw string without it.
+                            // Or the QR content actually has newlines.
+                            // We should probably normalize line endings too (\r\n vs \n).
+                            let expected_text = expected_text.trim().replace("\r\n", "\n");
 
                             pairs.push(TestPair {
                                 image_path: path.to_path_buf(),

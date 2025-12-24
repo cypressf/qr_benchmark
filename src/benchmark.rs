@@ -46,9 +46,15 @@ pub fn run_benchmark<W: std::io::Write>(
 
                 let (status, decoded_text) = match result {
                     Ok(text) => {
-                        if text == pair.expected_text {
+                        // Normalize decoded text for comparison too
+                        let normalized_expected = pair.expected_text.replace("\r\n", "\n").trim().to_string();
+                        let normalized_decoded = text.replace("\r\n", "\n").trim().to_string();
+
+                        if normalized_decoded == normalized_expected {
                             ("Correct".to_string(), text)
                         } else {
+                            // Debug mismatch if needed
+                            // println!("Mismatch! Exp len: {}, Got len: {}", normalized_expected.len(), normalized_decoded.len());
                             ("Incorrect".to_string(), text)
                         }
                     }

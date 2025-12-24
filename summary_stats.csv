@@ -1,4 +1,4 @@
 library,Total_Images,Total_Attempts,Success_Count,Success_Rate,Median_Time_ms,Mean_Time_ms,Median_Correct_ms,Mean_Correct_ms
-bardecoder,85,425,15,3.53,28.09,57.0,1.4,1.21
-rqrr,85,425,15,3.53,27.93,50.74,2.4,2.24
-rxing,85,425,15,3.53,88.12,130.29,0.32,0.3
+bardecoder,85,425,25,5.88,28.15,56.95,1.49,2.06
+rqrr,85,425,25,5.88,28.84,52.53,2.43,3.33
+rxing,85,425,25,5.88,88.04,130.0,0.33,0.52
