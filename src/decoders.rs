@@ -58,16 +58,58 @@ impl QrDecoder for BardecoderDecoder {
         let decoder = bardecoder::default_decoder();
         
         // bardecoder takes DynamicImage directly
-        let results = decoder.decode(image);
+        // Wrap in catch_unwind to handle potential panics in the library
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            decoder.decode(image)
+        }));
+
+        match result {
+            Ok(results) => {
+                // results is Vec<Result<String, Error>>
+                if let Some(result) = results.first() {
+                    match result {
+                        Ok(content) => Ok(content.clone()),
+                        Err(e) => Err(anyhow!("Decode error: {:?}", e)),
+                    }
+                } else {
+                    Err(anyhow!("No QR code detected"))
+                }
+            },
+            Err(_) => Err(anyhow!("Bardecoder panicked")),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_bardecoder_crash_image() {
+        // Path to the image that caused the panic
+        let image_path = PathBuf::from("../detection/nominal/image026.jpg");
+        if !image_path.exists() {
+            // Skip test if image doesn't exist (e.g. if running in a different environment)
+            // But for this user task, we expect it to exist.
+            eprintln!("Image not found: {:?}", image_path);
+            return;
+        }
+
+        let img = image::open(&image_path).expect("Failed to open image");
+        let decoder = BardecoderDecoder;
         
-        // results is Vec<Result<String, Error>>
-        if let Some(result) = results.first() {
-            match result {
-                Ok(content) => Ok(content.clone()),
-                Err(e) => Err(anyhow!("Decode error: {:?}", e)),
+        // This should not panic now
+        let result = decoder.decode(&img);
+        
+        // We expect it to either return Ok or Err, but NOT panic.
+        // In this case, since it was crashing, it will likely return Err("Bardecoder panicked")
+        match result {
+            Ok(_) => println!("Decode successful"),
+            Err(e) => {
+                println!("Decode failed gracefully: {}", e);
+                assert_eq!(e.to_string(), "Bardecoder panicked");
             }
-        } else {
-            Err(anyhow!("No QR code detected"))
         }
     }
 }
