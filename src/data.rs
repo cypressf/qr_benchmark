@@ -22,6 +22,7 @@ pub fn discover_test_data(
     let mut category_counts: HashMap<String, usize> = HashMap::new();
 
     for root in root_dirs {
+        let is_detection = root.contains("detection");
         for entry in WalkDir::new(root).follow_links(true) {
             let entry = entry?;
             let path = entry.path();
@@ -59,7 +60,7 @@ pub fn discover_test_data(
                             // x1 y1 x2 y2 x3 y3 x4 y4
                             // ...
 
-                            if content.trim().starts_with("#") || category != "decoding" {
+                            if is_detection {
                                 // Parse points
                                 let mut sets = Vec::new();
 
