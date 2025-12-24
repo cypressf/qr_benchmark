@@ -1,18 +1,14 @@
 use anyhow::Result;
 use plotters::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 
 #[derive(serde::Deserialize)]
 struct Record {
     library: String,
     category: String,
-    // file_path: String,
-    // iteration: u32,
     duration_us: u64,
     status: String,
-    // expected_text: String,
-    // decoded_text: String,
 }
 
 pub fn generate_plots(csv_path: &str) -> Result<()> {
@@ -22,8 +18,8 @@ pub fn generate_plots(csv_path: &str) -> Result<()> {
     let mut stats: HashMap<(String, String), (u32, u32)> = HashMap::new(); // (Lib, Cat) -> (Correct, Total)
     let mut durations: HashMap<String, Vec<u64>> = HashMap::new(); // Lib -> Vec<Duration> (only correct ones)
 
-    let mut libraries = std::collections::HashSet::new();
-    let mut categories = std::collections::HashSet::new();
+    let mut libraries = HashSet::new();
+    let mut categories = HashSet::new();
 
     for result in rdr.deserialize() {
         let record: Record = result?;
@@ -49,13 +45,8 @@ pub fn generate_plots(csv_path: &str) -> Result<()> {
     let mut sorted_categories: Vec<String> = categories.into_iter().collect();
     sorted_categories.sort();
 
-    // 1. Success Rate Plot
     draw_success_rates(&sorted_categories, &sorted_libraries, &stats)?;
-
-    // 2. Performance Plot (Summary)
     draw_performance(&sorted_libraries, &durations)?;
-
-    // 3. Performance Distribution (Histogram/PDF)
     draw_performance_dist(&sorted_libraries, &durations)?;
 
     Ok(())
@@ -71,23 +62,22 @@ fn draw_performance_dist(libraries: &[String], durations: &HashMap<String, Vec<u
     }
     
     if all_durations.is_empty() {
-        return Ok(()); // Nothing to draw
+        return Ok(());
     }
 
     all_durations.sort();
-    // Clip outliers for better visualization (e.g., P98)
+    // Clip outliers (P98)
     let max_dur = all_durations[(all_durations.len() as f64 * 0.98) as usize];
     
     let bucket_count = 50;
-    let bucket_size = (max_dur as f64 / bucket_count as f64).ceil() as u64;
-    let bucket_size = bucket_size.max(1); // avoid 0
+    let bucket_size = (max_dur as f64 / bucket_count as f64).ceil().max(1.0) as u64;
 
     let mut chart = ChartBuilder::on(&root)
         .caption("Performance Distribution (PDF)", ("sans-serif", 40))
         .margin(20)
         .x_label_area_size(50)
         .y_label_area_size(50)
-        .build_cartesian_2d(0u64..(max_dur + bucket_size), 0.0..1.0)?; // Normalized frequency
+        .build_cartesian_2d(0u64..(max_dur + bucket_size), 0.0..1.0)?;
 
     chart
         .configure_mesh()
@@ -99,7 +89,6 @@ fn draw_performance_dist(libraries: &[String], durations: &HashMap<String, Vec<u
         if let Some(durs) = durations.get(lib) {
             let color = Palette99::pick(idx);
             
-            // Build histogram
             let mut buckets = HashMap::new();
             for &d in durs {
                 if d <= max_dur {
@@ -116,7 +105,6 @@ fn draw_performance_dist(libraries: &[String], durations: &HashMap<String, Vec<u
                  let density = count as f64 / total;
                  points.push((b as u64 * bucket_size, density));
             }
-            // Add end point to drop line
             points.push(((bucket_count as u64 + 1) * bucket_size, 0.0));
 
             chart
@@ -126,15 +114,6 @@ fn draw_performance_dist(libraries: &[String], durations: &HashMap<String, Vec<u
                 ))?
                 .label(lib)
                 .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)));
-                
-             // Optional: Fill area with low opacity
-             /*
-             chart.draw_series(AreaSeries::new(
-                points,
-                0.0,
-                &color.mix(0.2),
-             ))?;
-             */
         }
     }
 
@@ -220,7 +199,6 @@ fn draw_performance(libraries: &[String], durations: &HashMap<String, Vec<u64>>)
     let root = BitMapBackend::new("performance.png", (800, 600)).into_drawing_area();
     root.fill(&WHITE)?;
 
-    // Calculate stats
     let mut perf_stats = Vec::new();
     let mut max_dur = 0;
 
@@ -237,7 +215,6 @@ fn draw_performance(libraries: &[String], durations: &HashMap<String, Vec<u64>>)
         }
     }
 
-    // Ensure non-zero range
     if max_dur == 0 {
         max_dur = 100;
     }

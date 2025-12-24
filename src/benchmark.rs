@@ -17,50 +17,66 @@ pub struct Measurement {
     pub decoded_text: String,
 }
 
-// Calculate intersection over union for polygons if possible, 
-// or just average corner distance error.
-// Since ordering of points might differ or be rotated, we need to be careful.
-// A simpler metric for "Correct" detection:
-// Average distance between matched corners is less than a threshold (e.g. 5% of image size or fixed pixels).
-fn is_detection_correct(
-    expected_points_sets: &[Vec<(f32, f32)>], 
-    actual_points: &[(f32, f32)],
-    tolerance: f32
-) -> bool {
-    if actual_points.len() != 4 {
-        return false;
+struct Verifier;
+
+impl Verifier {
+    fn distance(p1: (f32, f32), p2: (f32, f32)) -> f32 {
+        ((p1.0 - p2.0).powi(2) + (p1.1 - p2.1).powi(2)).sqrt()
     }
 
-    // Check against ALL expected sets. If it matches ANY set, it's a success.
-    for expected_points in expected_points_sets {
-         if expected_points.len() != 4 {
-             continue; 
-         }
+    fn check_points(
+        expected_sets: &[Vec<(f32, f32)>],
+        actual: &[(f32, f32)],
+        tolerance: f32,
+    ) -> bool {
+        if actual.len() != 4 {
+            return false;
+        }
 
-        // We don't know the starting corner index for sure (rotation).
-        // Try all 4 rotations for the actual points to find best match.
-        let mut min_avg_dist = f32::MAX;
-
-        for offset in 0..4 {
-            let mut total_dist = 0.0;
-            for i in 0..4 {
-                let p1 = expected_points[i];
-                let p2 = actual_points[(i + offset) % 4];
-                let dist = ((p1.0 - p2.0).powi(2) + (p1.1 - p2.1).powi(2)).sqrt();
-                total_dist += dist;
+        for expected in expected_sets {
+            if expected.len() != 4 {
+                continue;
             }
-            let avg_dist = total_dist / 4.0;
-            if avg_dist < min_avg_dist {
-                min_avg_dist = avg_dist;
+
+            // Check all 4 rotations
+            let mut min_avg_dist = f32::MAX;
+            for offset in 0..4 {
+                let mut total_dist = 0.0;
+                for i in 0..4 {
+                    total_dist += Self::distance(expected[i], actual[(i + offset) % 4]);
+                }
+                min_avg_dist = min_avg_dist.min(total_dist / 4.0);
+            }
+
+            if min_avg_dist < tolerance {
+                return true;
             }
         }
-        
-        if min_avg_dist < tolerance {
-            return true;
-        }
+        false
     }
 
-    false
+    fn normalize_text(text: &str) -> String {
+        text.replace("\r\n", "\n").trim().to_string()
+    }
+
+    fn verify(pair: &TestPair, result: &crate::decoders::DecodeResult) -> String {
+        if let Some(expected_text) = &pair.expected_text {
+            let normalized_expected = Self::normalize_text(expected_text);
+            let normalized_decoded = Self::normalize_text(&result.text);
+            if normalized_decoded == normalized_expected {
+                return "Correct".to_string();
+            }
+        } else if let Some(expected_points) = &pair.expected_points {
+            if let Some(actual_points) = &result.points {
+                if Self::check_points(expected_points, actual_points, 50.0) {
+                    return "Correct".to_string();
+                }
+            } else {
+                return "NoPoints".to_string();
+            }
+        }
+        "Incorrect".to_string()
+    }
 }
 
 pub fn run_benchmark<W: std::io::Write>(
@@ -71,10 +87,10 @@ pub fn run_benchmark<W: std::io::Write>(
     progress: &ProgressBar,
 ) -> Result<()> {
     for pair in pairs {
-        // Load image once
         let img = match image::open(&pair.image_path) {
             Ok(i) => i,
-            Err(_) => {
+            Err(e) => {
+                eprintln!("Failed to load image {:?}: {}", pair.image_path, e);
                 progress.inc(decoders.len() as u64);
                 continue;
             }
@@ -84,40 +100,13 @@ pub fn run_benchmark<W: std::io::Write>(
             // Warmup
             let _ = decoder.decode(&img);
 
-            // Measurements
             for i in 1..=iterations {
                 let start = Instant::now();
                 let result = decoder.decode(&img);
                 let duration = start.elapsed().as_micros();
 
                 let (status, decoded_text) = match result {
-                    Ok(decode_result) => {
-                        let mut status = "Incorrect".to_string();
-                        let text = decode_result.text.clone();
-
-                        // 1. Text Comparison (if expected text is available)
-                        if let Some(expected_text) = &pair.expected_text {
-                            let normalized_expected = expected_text.replace("\r\n", "\n").trim().to_string();
-                            let normalized_decoded = text.replace("\r\n", "\n").trim().to_string();
-                            
-                            if normalized_decoded == normalized_expected {
-                                status = "Correct".to_string();
-                            }
-                        } 
-                        // 2. Point/Detection Comparison (if expected points are available)
-                        else if let Some(expected_points_sets) = &pair.expected_points {
-                            if let Some(actual_points) = &decode_result.points {
-                                // Use a tolerance of 50.0 pixels (generous but ensures general alignment)
-                                if is_detection_correct(expected_points_sets, actual_points, 50.0) {
-                                    status = "Correct".to_string();
-                                }
-                            } else {
-                                status = "NoPoints".to_string();
-                            }
-                        }
-
-                        (status, text)
-                    }
+                    Ok(ref res) => (Verifier::verify(pair, res), res.text.clone()),
                     Err(_) => ("Failed".to_string(), "".to_string()),
                 };
 
