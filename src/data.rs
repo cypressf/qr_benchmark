@@ -6,7 +6,6 @@ use walkdir::WalkDir;
 #[derive(Debug, Clone)]
 pub struct TestPair {
     pub image_path: PathBuf,
-    pub text_path: PathBuf,
     pub category: String,
     pub expected_text: String,
 }
@@ -56,7 +55,6 @@ pub fn discover_test_data(
 
                             pairs.push(TestPair {
                                 image_path: path.to_path_buf(),
-                                text_path,
                                 category,
                                 expected_text,
                             });
