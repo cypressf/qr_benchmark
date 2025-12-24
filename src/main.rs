@@ -19,6 +19,7 @@ fn main() -> Result<()> {
         Box::new(decoders::RqrrDecoder),
         Box::new(decoders::RxingDecoder),
         Box::new(decoders::BardecoderDecoder),
+        Box::new(decoders::ZBarDecoder),
     ];
 
     // 3. Prepare CSV Writer

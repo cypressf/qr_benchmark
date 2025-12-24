@@ -8,6 +8,7 @@ use rxing::common::HybridBinarizer;
 use rxing::BinaryBitmap;
 use rxing::{BarcodeFormat, DecodeHintType, MultiFormatReader, Reader, ResultPoint};
 use std::collections::{HashMap, HashSet};
+use zbar_pack::{Image, ImageScanner, SymbolType};
 
 pub struct DecodeResult {
     pub text: String,
@@ -217,6 +218,45 @@ impl QrDecoder for BardecoderDecoder {
             Ok(res) => res,
             Err(_) => Err(anyhow!("Bardecoder panicked")),
         }
+    }
+}
+
+pub struct ZBarDecoder;
+
+impl QrDecoder for ZBarDecoder {
+    fn name(&self) -> &'static str {
+        "zbar"
+    }
+
+    fn decode(&self, image: &DynamicImage) -> Result<DecodeResult> {
+        let gray = image.to_luma8();
+        let width = gray.width();
+        let height = gray.height();
+        let raw = gray.as_raw();
+
+        let mut scanner =
+            ImageScanner::new().map_err(|e| anyhow!("ZBar scanner creation failed: {}", e))?;
+
+        // Enable QRCODE (0 = ZBAR_CFG_ENABLE, 1 = value)
+        // scanner.set_config(SymbolType::QRCODE, 0, 1).ok();
+
+        let zbar_image = Image::from_gray(raw, width, height)
+            .map_err(|e| anyhow!("ZBar image creation failed: {}", e))?;
+
+        let results = scanner
+            .scan_image(&zbar_image)
+            .map_err(|e| anyhow!("ZBar scan failed: {}", e))?;
+
+        for symbol in results {
+            if symbol.symbol_type() == SymbolType::QRCODE {
+                return Ok(DecodeResult {
+                    text: symbol.data().to_string(),
+                    points: None,
+                });
+            }
+        }
+
+        Err(anyhow!("No QR code detected"))
     }
 }
 

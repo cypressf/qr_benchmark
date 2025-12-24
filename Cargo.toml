@@ -9,6 +9,7 @@ rxing = "0.5" # Rust port of ZXing
 rqrr = "0.8" # Pure Rust Quirc
 bardecoder = "0.5" # Pure Rust decoder
 qr_code = "2.0" # Basic decoding support
+zbar-pack = "0.1.5"
 
 # Utilities
 image = "0.24"
