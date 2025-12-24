@@ -10,7 +10,7 @@ fn main() -> Result<()> {
     // 1. Data Discovery
     println!("Discovering test data...");
     // Limit to None for full run.
-    let pairs = data::discover_test_data(&["./qrcodes/decoding", "./qrcodes/detection"], Some(2))?;
+    let pairs = data::discover_test_data(&["./qrcodes/decoding", "./qrcodes/detection"], None)?;
     println!("Found {} test pairs.", pairs.len());
 
     // 2. Setup Decoders
