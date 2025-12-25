@@ -31,6 +31,9 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    // 0. Ensure Test Data
+    data::ensure_test_data()?;
+
     // 1. Data Discovery
     println!("Discovering test data from {:?}...", DATA_DIRS);
     let all_pairs = data::discover_test_data(DATA_DIRS, None)?;

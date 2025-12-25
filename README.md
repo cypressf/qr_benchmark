@@ -9,6 +9,27 @@ A benchmarking suite for Rust QR code decoding libraries.
 - **bardecoder**: Pure Rust QR decoder.
 - **zbar**: Bindings to the ZBar C library.
 
+## Prerequisites
+
+### ZBar
+
+To use the `zbar` feature (enabled by default), you need to have the ZBar C library installed on your system.
+
+**macOS:**
+```bash
+brew install zbar
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libzbar-dev
+```
+
+**Fedora:**
+```bash
+sudo dnf install zbar-devel
+```
+
 ## Usage
 
 Run the benchmark with default settings:

@@ -1,7 +1,32 @@
 use anyhow::Result;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+pub fn ensure_test_data() -> Result<()> {
+    if Path::new("qrcodes").exists() {
+        return Ok(());
+    }
+
+    println!("Test data not found in 'qrcodes'. Downloading...");
+    let url = "https://boofcv.org/notwiki/regression/fiducial/qrcodes_v3.zip";
+
+    let response = reqwest::blocking::get(url)?;
+    let bytes = response.bytes()?;
+    let cursor = std::io::Cursor::new(bytes);
+
+    println!("Extracting test data...");
+    let mut archive = zip::ZipArchive::new(cursor)?;
+    archive.extract(".")?;
+
+    // The zip file from the URL usually extracts to "qrcodes_v3" or similar.
+    // If "qrcodes" doesn't exist but "qrcodes_v3" does, rename it.
+    if !Path::new("qrcodes").exists() && Path::new("qrcodes_v3").exists() {
+        std::fs::rename("qrcodes_v3", "qrcodes")?;
+    }
+
+    Ok(())
+}
 
 #[derive(Debug, Clone)]
 pub struct TestPair {
@@ -27,10 +52,9 @@ fn parse_points(content: &str) -> Option<Vec<Vec<(f32, f32)>>> {
         if parts.len() >= 8 {
             let mut points = Vec::new();
             for i in 0..4 {
-                if let (Ok(x), Ok(y)) = (
-                    parts[i * 2].parse::<f32>(),
-                    parts[i * 2 + 1].parse::<f32>(),
-                ) {
+                if let (Ok(x), Ok(y)) =
+                    (parts[i * 2].parse::<f32>(), parts[i * 2 + 1].parse::<f32>())
+                {
                     points.push((x, y));
                 }
             }
