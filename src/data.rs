@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+use std::io::Read;
+
 pub fn ensure_test_data() -> Result<()> {
     if Path::new("qrcodes").exists() {
         return Ok(());
@@ -11,9 +13,32 @@ pub fn ensure_test_data() -> Result<()> {
     println!("Test data not found in 'qrcodes'. Downloading...");
     let url = "https://boofcv.org/notwiki/regression/fiducial/qrcodes_v3.zip";
 
-    let response = reqwest::blocking::get(url)?;
-    let bytes = response.bytes()?;
-    let cursor = std::io::Cursor::new(bytes);
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()?;
+
+    let mut response = client.get(url).send()?;
+    let total_size = response.content_length().unwrap_or(0);
+
+    let pb = indicatif::ProgressBar::new(total_size);
+    pb.set_style(indicatif::ProgressStyle::default_bar()
+        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")?
+        .progress_chars("#>-"));
+
+    let mut downloaded_bytes = Vec::new();
+    let mut buf = [0; 8192];
+
+    loop {
+        let n = response.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        downloaded_bytes.extend_from_slice(&buf[..n]);
+        pb.inc(n as u64);
+    }
+    pb.finish_with_message("Download complete");
+
+    let cursor = std::io::Cursor::new(downloaded_bytes);
 
     println!("Extracting test data...");
     let mut archive = zip::ZipArchive::new(cursor)?;
