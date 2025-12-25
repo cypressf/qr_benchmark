@@ -1,14 +1,22 @@
 use anyhow::{anyhow, Result};
-use bardecoder::decode::Decode;
-use bardecoder::detect::{Detect, Location};
-use bardecoder::extract::Extract;
-use bardecoder::prepare::Prepare;
 use image::DynamicImage;
+#[cfg(feature = "rxing")]
 use rxing::common::HybridBinarizer;
+#[cfg(feature = "rxing")]
 use rxing::BinaryBitmap;
+#[cfg(feature = "rxing")]
 use rxing::{BarcodeFormat, DecodeHintType, MultiFormatReader, Reader, ResultPoint};
 use std::collections::{HashMap, HashSet};
+#[cfg(feature = "zbar")]
 use zbar_pack::{Image, ImageScanner, SymbolType};
+
+#[cfg(feature = "bardecoder")]
+use bardecoder::{
+    decode::Decode,
+    detect::{Detect, Location},
+    extract::Extract,
+    prepare::Prepare,
+};
 
 pub struct DecodeResult {
     pub text: String,
@@ -21,12 +29,15 @@ pub trait QrDecoder {
     fn decode(&self, image: &DynamicImage) -> Result<DecodeResult>;
 }
 
+#[cfg(feature = "rqrr")]
 pub struct RqrrDecoder;
 
+#[cfg(feature = "rqrr")]
 impl RqrrDecoder {
     // Helper logic moved to decode() to avoid type complexity
 }
 
+#[cfg(feature = "rqrr")]
 impl QrDecoder for RqrrDecoder {
     fn name(&self) -> &'static str {
         "rqrr"
@@ -73,7 +84,9 @@ impl QrDecoder for RqrrDecoder {
     }
 }
 
+#[cfg(feature = "rxing")]
 pub struct RxingDecoder;
+#[cfg(feature = "rxing")]
 impl QrDecoder for RxingDecoder {
     fn name(&self) -> &'static str {
         "rxing"
@@ -122,8 +135,10 @@ impl QrDecoder for RxingDecoder {
     }
 }
 
+#[cfg(feature = "bardecoder")]
 pub struct BardecoderDecoder;
 
+#[cfg(feature = "bardecoder")]
 impl BardecoderDecoder {
     fn calculate_points(
         p1: (f32, f32),
@@ -169,6 +184,7 @@ impl BardecoderDecoder {
     }
 }
 
+#[cfg(feature = "bardecoder")]
 impl QrDecoder for BardecoderDecoder {
     fn name(&self) -> &'static str {
         "bardecoder"
@@ -221,8 +237,10 @@ impl QrDecoder for BardecoderDecoder {
     }
 }
 
+#[cfg(feature = "zbar")]
 pub struct ZBarDecoder;
 
+#[cfg(feature = "zbar")]
 impl QrDecoder for ZBarDecoder {
     fn name(&self) -> &'static str {
         "zbar"
@@ -265,6 +283,7 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    #[cfg(feature = "bardecoder")]
     #[test]
     fn test_bardecoder_crash_image() {
         let image_path = PathBuf::from("../detection/nominal/image026.jpg");

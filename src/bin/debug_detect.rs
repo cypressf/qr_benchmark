@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
-use qr_benchmark::decoders::{QrDecoder, RqrrDecoder, RxingDecoder, BardecoderDecoder};
+use anyhow::Result;
+use qr_benchmark::decoders::{BardecoderDecoder, QrDecoder, RqrrDecoder, RxingDecoder};
 use serde::Serialize;
-use std::path::PathBuf;
 use std::fs::File;
+use std::path::PathBuf;
 
 #[derive(Serialize)]
 struct DetectionResult {
@@ -39,27 +39,29 @@ fn main() -> Result<()> {
         let content = std::fs::read_to_string(&txt_path)?;
         let mut sets = Vec::new();
         let mut current_set = Vec::new();
-        
+
         for line in content.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with("#") || line == "SETS" {
                 continue;
             }
-            
+
             let parts: Vec<&str> = line.split_whitespace().collect();
-            
+
             // Format 1: All 4 points (8 coordinates) on one line
             if parts.len() >= 8 {
                 let mut points = Vec::new();
                 for i in 0..4 {
-                    if let (Ok(x), Ok(y)) = (parts[i*2].parse::<f32>(), parts[i*2+1].parse::<f32>()) {
+                    if let (Ok(x), Ok(y)) =
+                        (parts[i * 2].parse::<f32>(), parts[i * 2 + 1].parse::<f32>())
+                    {
                         points.push((x, y));
                     }
                 }
                 if points.len() == 4 {
                     sets.push(points);
                 }
-            } 
+            }
             // Format 2: One point (2 coordinates) per line
             else if parts.len() == 2 {
                 if let (Ok(x), Ok(y)) = (parts[0].parse::<f32>(), parts[1].parse::<f32>()) {
@@ -71,7 +73,7 @@ fn main() -> Result<()> {
                 }
             }
         }
-        
+
         if !sets.is_empty() {
             ground_truth_sets = Some(sets);
         }
